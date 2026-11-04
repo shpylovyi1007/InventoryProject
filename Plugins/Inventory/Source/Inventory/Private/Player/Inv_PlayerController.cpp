@@ -4,6 +4,8 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Interaction/Inv_Highlightable.h"
+#include "Items/Components/Inv_ItemComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Widgets/HUD/Inv_HUDWidget.h"
 
@@ -80,14 +82,32 @@ void AInv_PlayerController::TraceForItem()
 	LastActor = ThisActor;
 	ThisActor = HitResult.GetActor();
 	
+	if (!ThisActor.IsValid())
+	{
+			if (IsValid(HUDWidget)) HUDWidget->HidePickupMessage();
+	}
+	
 	if (ThisActor == LastActor) return;
 	
 	if (ThisActor.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Started"));
+		UActorComponent* Highlightable = ThisActor->FindComponentByInterface(UInv_Highlightable::StaticClass());
+		if (IsValid(Highlightable))
+		{
+			IInv_Highlightable::Execute_Highlight(Highlightable);
+		}
+		
+		UInv_ItemComponent* ItemComponent = ThisActor->FindComponentByClass<UInv_ItemComponent>();
+		if (!IsValid(ItemComponent)) return;
+		
+		if (IsValid(HUDWidget)) HUDWidget->ShowPickupMessage(ItemComponent->GetPickupMessage());
 	}
 	if (LastActor.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Stopped"));
+		UActorComponent* Highlightable = LastActor->FindComponentByInterface(UInv_Highlightable::StaticClass());
+		if (IsValid(Highlightable))
+		{
+			IInv_Highlightable::Execute_UnHighlight(Highlightable);
+		}
 	}
 }
