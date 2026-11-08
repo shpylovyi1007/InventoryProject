@@ -5,6 +5,11 @@
 #include "Components/WidgetSwitcher.h"
 #include "Widgets/Inventory/Spatial/Inv_InventoryGrid.h"
 
+FInv_SlotAvailabilityResult UInv_SpatialInventory::HasRoomForItem(UInv_ItemComponent* ItemComponent) const
+{
+	return FInv_SlotAvailabilityResult();
+}
+
 void UInv_SpatialInventory::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();

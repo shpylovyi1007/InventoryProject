@@ -12,4 +12,7 @@ UCLASS()
 class INVENTORY_API UInv_InventoryItem : public UObject
 {
 	GENERATED_BODY()
+	
+private:
+	
 };
