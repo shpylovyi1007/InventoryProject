@@ -12,6 +12,7 @@
  * for creating a new Inventory Item
  */
 
+struct FInv_ItemFragment;
 enum class EInv_ItemCategory : uint8;
 
 USTRUCT(BlueprintType)
@@ -26,6 +27,9 @@ public:
 	FGameplayTag GetItemType() const { return ItemType; }
 	
 private:
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (ExcludeBaseStruct))
+	TArray<TInstancedStruct<FInv_ItemFragment>> Fragments;
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	EInv_ItemCategory ItemCategory{EInv_ItemCategory::None};
