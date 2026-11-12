@@ -24,11 +24,16 @@ public:
 	FInv_ItemManifest& GetItemManifestMutable() { return ItemManifest.GetMutable<FInv_ItemManifest>(); }
 	void SetItemManifest(const FInv_ItemManifest& Manifest);
 	bool IsStackable() const;
+	int32 GetTotalStackCount() const { return TotalStackCount; }
+	void SetTotalStackCount(int32 Count) { TotalStackCount = Count; };
 	
 private:
 	
 	UPROPERTY(VisibleAnywhere, meta = (BaseStruct = "/Script/Inventory.Inv_ItemManifest"), Replicated)
 	FInstancedStruct ItemManifest;
+	
+	UPROPERTY(Replicated)
+	int32 TotalStackCount = 0;
 };
 
 
