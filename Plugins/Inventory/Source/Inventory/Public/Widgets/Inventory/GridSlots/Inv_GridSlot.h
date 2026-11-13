@@ -31,7 +31,7 @@ public:
 	int32 GetStackCount() const { return StackCount; }
 	int32 GetUpperLeftIndex() const { return UpperLeftIndex; }
 	TWeakObjectPtr<UInv_InventoryItem> GetInventoryItem() const { return InventoryItem; }
-	bool GetAvailable() const { return bAvailable; }
+	bool IsAvailable() const { return bAvailable; }
 	
 	
 	void SetTileIndex(int32 Index) { TileIndex = Index; }
@@ -48,11 +48,11 @@ public:
 	
 private:
 	
-	int32 TileIndex;
-	int32 StackCount;
+	int32 TileIndex{INDEX_NONE};
+	int32 StackCount{0};
 	int32 UpperLeftIndex{INDEX_NONE};
 	TWeakObjectPtr<UInv_InventoryItem> InventoryItem;
-	bool bAvailable;
+	bool bAvailable = true;
 	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UImage> Image_GridSlot;
