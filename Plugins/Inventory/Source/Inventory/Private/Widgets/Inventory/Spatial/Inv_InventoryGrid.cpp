@@ -178,6 +178,8 @@ void UInv_InventoryGrid::ChangeHoverType(const int32 Index, const FIntPoint& Dim
 	LastHighlightedDimensions = Dimensions;
 }
 
+
+
 FIntPoint UInv_InventoryGrid::CalculateStartingCoordinate(const FIntPoint& Coordinate, const FIntPoint& Dimensions, const EInv_TileQuadrant Quadrant) const
 {
 	const int32 HasEvenWidth = Dimensions.X % 2 == 0 ? 1 : 0;
@@ -387,7 +389,7 @@ bool UInv_InventoryGrid::IsLeftClick(const FPointerEvent& InMouseEvent) const
 void UInv_InventoryGrid::PickUp(UInv_InventoryItem* ClickedInventoryItem, const int32 GridIndex)
 {
 	AssignHoverItemWithIndex(ClickedInventoryItem, GridIndex, GridIndex);
-	RemoveItemFroGrid(ClickedInventoryItem, GridIndex);
+	RemoveItemFromGrid(ClickedInventoryItem, GridIndex);
 }
 
 void UInv_InventoryGrid::AssignHoverItemWithIndex(UInv_InventoryItem* InventoryItem, const int32 GridIndex,
@@ -398,7 +400,7 @@ void UInv_InventoryGrid::AssignHoverItemWithIndex(UInv_InventoryItem* InventoryI
 	HoverItem->UpdateStackCount(InventoryItem->IsStackable() ? GridSlots[GridIndex]->GetStackCount() : 0);
 }
 
-void UInv_InventoryGrid::RemoveItemFroGrid(UInv_InventoryItem* InventoryItem, const int32 GridIndex)
+void UInv_InventoryGrid::RemoveItemFromGrid(UInv_InventoryItem* InventoryItem, const int32 GridIndex)
 {
 	const FInv_GridFragment* GridFragment = GetFragment<FInv_GridFragment>(InventoryItem, FragmentTags::GridFragment);
 	if (!GridFragment) return;
@@ -469,13 +471,24 @@ void UInv_InventoryGrid::AddStacks(const FInv_SlotAvailabilityResult& Result)
 
 void UInv_InventoryGrid::OnSlottedItemClicked(int32 GridIndex, const FPointerEvent& InMouseEvent)
 {
+	if (!IsLeftClick(InMouseEvent)) return;
 	check(GridSlots.IsValidIndex(GridIndex));
+
 	UInv_InventoryItem* ClickedInventoryItem = GridSlots[GridIndex]->GetInventoryItem().Get();
+	if (!IsValid(ClickedInventoryItem)) return;
 	
-	if (!IsValid(HoverItem) && IsLeftClick(InMouseEvent))
+	if (!IsValid(HoverItem))
 	{
 		PickUp(ClickedInventoryItem, GridIndex);
+		return;
 	}
+	
+	if (IsSameStackable(ClickedInventoryItem))
+	{
+		return;
+	}
+	
+	SwapWithHoverItem(ClickedInventoryItem, GridIndex);
 }
 
 void UInv_InventoryGrid::AddItem(UInv_InventoryItem* Item)
@@ -600,7 +613,140 @@ void UInv_InventoryGrid::ConstructGrid()
 			GridCPS->SetPosition(TilePosition * TileSize);
 			
 			GridSlots.Add(GridSlot);
+			GridSlot->GridSlotClicked.AddDynamic(this, &ThisClass::OnGridSlotClicked);
+			GridSlot->GridSlotHovered.AddDynamic(this, &ThisClass::OnGridSlotHovered);
+			GridSlot->GridSlotUnhovered.AddDynamic(this, &ThisClass::OnGridSlotUnhovered);
+			
 		}
+	}
+}
+
+void UInv_InventoryGrid::OnGridSlotClicked(int32 GridIndex, const FPointerEvent& InMouseEvent)
+{
+	if (!IsValid(HoverItem)) return;
+	if (!GridSlots.IsValidIndex(ItemDropIndex)) return;
+	
+	if (CurrentQueryResult.ValidItem.IsValid() && GridSlots.IsValidIndex(CurrentQueryResult.UpperLeftIndex))
+	{
+		OnSlottedItemClicked(CurrentQueryResult.UpperLeftIndex, InMouseEvent);
+		return;
+	}
+	
+	auto GridSlot = GridSlots[ItemDropIndex];
+	if (!GridSlot->GetInventoryItem().IsValid())
+	{
+		PutDownOnIndex(ItemDropIndex);
+	}
+	
+}
+
+void UInv_InventoryGrid::PutDownOnIndex(const int32 Index)
+{
+	AddItemAtIndex(HoverItem->GetInventoryItem(), Index, HoverItem->IsStackable(), HoverItem->GetStackCount());
+	UpdateGridSlots(HoverItem->GetInventoryItem(), Index, HoverItem->IsStackable(), HoverItem->GetStackCount());
+	ClearHoverItem();
+}
+
+void UInv_InventoryGrid::ClearHoverItem()
+{
+	if (!IsValid(HoverItem)) return;
+	
+	HoverItem->SetInventoryItem(nullptr);
+	HoverItem->SetIsStackable(false);
+	HoverItem->SetPreviousGridIndex(INDEX_NONE);
+	HoverItem->UpdateStackCount(0);
+	HoverItem->SetImageBrush(FSlateNoResource());
+	
+	HoverItem->RemoveFromParent();
+	HoverItem = nullptr;
+	
+	ShowCursor();
+}
+
+UUserWidget* UInv_InventoryGrid::GetVisibleCursorWidget()
+{
+	if (!IsValid(GetOwningPlayer()) || !IsValid(VisibleCursorWidgetClass)) return nullptr;
+	if (!IsValid(VisibleCursorWidget))
+	{
+		VisibleCursorWidget = CreateWidget<UUserWidget>(GetOwningPlayer(), VisibleCursorWidgetClass);
+	}
+	return VisibleCursorWidget;
+}
+
+UUserWidget* UInv_InventoryGrid::GetHiddenCursorWidget()
+{
+	if (!IsValid(GetOwningPlayer()) || !IsValid(HiddenCursorWidgetClass)) return nullptr;
+	if (!IsValid(HiddenCursorWidget))
+	{
+		HiddenCursorWidget = CreateWidget<UUserWidget>(GetOwningPlayer(), HiddenCursorWidgetClass);
+	}
+	return HiddenCursorWidget;
+}
+
+bool UInv_InventoryGrid::IsSameStackable(const UInv_InventoryItem* ClickedInventoryItem) const
+{
+	if (!IsValid(HoverItem) || !IsValid(ClickedInventoryItem)) return false;
+
+	const bool bIsSameItem = ClickedInventoryItem == HoverItem->GetInventoryItem();
+	const bool bIsStackable = ClickedInventoryItem->IsStackable();
+	return bIsSameItem && bIsStackable && HoverItem->GetItemType().MatchesTagExact(ClickedInventoryItem->GetItemManifest().GetItemType());
+}
+
+void UInv_InventoryGrid::SwapWithHoverItem(UInv_InventoryItem* ClickedInventoryItem, const int32 GridIndex)
+{
+	if (!IsValid(HoverItem) || !IsValid(ClickedInventoryItem)) return;
+	if (!GridSlots.IsValidIndex(GridIndex)) return;
+	
+	UInv_InventoryItem* TempInventoryItem = HoverItem->GetInventoryItem();
+	if (!IsValid(TempInventoryItem)) return;
+
+	const int32 TempStackCount = HoverItem->GetStackCount();
+	const bool bTempIsStackable = HoverItem->IsStackable();
+	
+	// Keep the same previous grid index
+	AssignHoverItemWithIndex(ClickedInventoryItem, GridIndex, HoverItem->GetPreviousGridIndex());
+	RemoveItemFromGrid(ClickedInventoryItem, GridIndex);
+	AddItemAtIndex(TempInventoryItem, GridIndex, bTempIsStackable, TempStackCount);
+	UpdateGridSlots(TempInventoryItem, GridIndex, bTempIsStackable, TempStackCount);
+}
+
+void UInv_InventoryGrid::ShowCursor()
+{
+	if (!IsValid(GetOwningPlayer())) return;
+	if (UUserWidget* CursorWidget = GetVisibleCursorWidget())
+	{
+		GetOwningPlayer()->SetMouseCursorWidget(EMouseCursor::Default, CursorWidget);
+	}
+}
+
+void UInv_InventoryGrid::HideCursor()
+{
+	if (!IsValid(GetOwningPlayer())) return;
+	if (UUserWidget* CursorWidget = GetHiddenCursorWidget())
+	{
+		GetOwningPlayer()->SetMouseCursorWidget(EMouseCursor::Default, CursorWidget);
+	}
+}
+
+void UInv_InventoryGrid::OnGridSlotHovered(int32 GridIndex, const FPointerEvent& InMouseEvent)
+{
+	if (IsValid(HoverItem)) return;
+	
+	UInv_GridSlot* GridSlot = GridSlots[GridIndex];
+	if (GridSlot->IsAvailable())
+	{
+		GridSlot->SetOccupiedTexture();
+	}
+}
+
+void UInv_InventoryGrid::OnGridSlotUnhovered(int32 GridIndex, const FPointerEvent& InMouseEvent)
+{
+	if (IsValid(HoverItem)) return;
+	
+	UInv_GridSlot* GridSlot = GridSlots[GridIndex];
+	if (GridSlot->IsAvailable())
+	{
+		GridSlot->SetUnoccupiedTexture();
 	}
 }
 

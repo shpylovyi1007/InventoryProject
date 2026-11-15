@@ -30,6 +30,8 @@ public:
 	EInv_ItemCategory GetItemCategory() const { return ItemCategory; }
 	FInv_SlotAvailabilityResult HasRoomForItemComponent(const UInv_ItemComponent* ItemComponent);
 	
+	void ShowCursor();
+	void HideCursor();
 	
 	UFUNCTION()
 	void AddItem(UInv_InventoryItem* Item);
@@ -67,7 +69,7 @@ private:
 	void PickUp(UInv_InventoryItem* ClickedInventoryItem, const int32 GridIndex);
 	void AssignHoverItem(UInv_InventoryItem* InventoryItem);
 	void AssignHoverItemWithIndex(UInv_InventoryItem* InventoryItem, const int32 GridIndex, const int32 PreviousGridIndex);
-	void RemoveItemFroGrid(UInv_InventoryItem* InventoryItem, const int32 GridIndex);
+	void RemoveItemFromGrid(UInv_InventoryItem* InventoryItem, const int32 GridIndex);
 	void UpdateTileParameters(const FVector2D& CanvasPosition, const FVector2D& MousePosition);
 	FIntPoint CalculateHoveredCoordinates(const FVector2D& CanvasPosition, const FVector2D& MousePosition) const;
 	EInv_TileQuadrant CalculateTileQuadrant(const FVector2D& CanvasPosition, const FVector2D& MousePosition) const;
@@ -78,12 +80,40 @@ private:
 	void HighlightSlots(const int32 Index, const FIntPoint& Dimensions);
 	void UnHighlightSlots(const int32 Index, const FIntPoint& Dimensions);
 	void ChangeHoverType(const int32 Index, const FIntPoint& Dimensions, EInv_GridSlotState SlotState);
+	void PutDownOnIndex(const int32 Index);
+	void ClearHoverItem();
+	UUserWidget* GetVisibleCursorWidget();
+	UUserWidget* GetHiddenCursorWidget();
+	bool IsSameStackable(const UInv_InventoryItem* ClickedInventoryItem) const;
+	void SwapWithHoverItem(UInv_InventoryItem* ClickedInventoryItem, const int32 GridIndex);
+	
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TSubclassOf<UUserWidget> VisibleCursorWidgetClass;
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	TSubclassOf<UUserWidget> HiddenCursorWidgetClass;
+	
+	UPROPERTY()
+	TObjectPtr<UUserWidget> VisibleCursorWidget;
+	
+	UPROPERTY()
+	TObjectPtr<UUserWidget> HiddenCursorWidget;
 	
 	UFUNCTION()
 	void AddStacks(const FInv_SlotAvailabilityResult& Result);
 	
 	UFUNCTION()
 	void OnSlottedItemClicked(int32 GridIndex, const FPointerEvent& InMouseEvent);
+	
+	UFUNCTION()
+	void OnGridSlotClicked(int32 GridIndex, const FPointerEvent& InMouseEvent);
+	
+	UFUNCTION()
+	void OnGridSlotHovered(int32 GridIndex, const FPointerEvent& InMouseEvent);
+	
+	UFUNCTION()
+	void OnGridSlotUnhovered(int32 GridIndex, const FPointerEvent& InMouseEvent);
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"), Category = "Inventory")
 	EInv_ItemCategory ItemCategory;

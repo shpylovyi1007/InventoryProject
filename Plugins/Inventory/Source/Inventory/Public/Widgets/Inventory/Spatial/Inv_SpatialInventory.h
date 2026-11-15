@@ -56,6 +56,6 @@ private:
 	UFUNCTION()
 	void ShowCraftables();
 	void DisableButton(UButton* Button) const;
-
 	void SetActiveGrid(UInv_InventoryGrid* Grid, UButton* Button);
+	TWeakObjectPtr<UInv_InventoryGrid> ActiveGrid;
 };
