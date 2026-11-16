@@ -2,6 +2,7 @@
 #include "Widgets/Inventory/GridSlots/Inv_GridSlot.h"
 #include "Items/Inv_InventoryItem.h"
 #include "Components/Image.h"
+#include "Widgets/ItemPopUp/Inv_ItemPopUp.h"
 
 void UInv_GridSlot::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
@@ -24,6 +25,18 @@ FReply UInv_GridSlot::NativeOnMouseButtonDown(const FGeometry& InGeometry, const
 void UInv_GridSlot::SetInventoryItem(UInv_InventoryItem* Item)
 {
 	InventoryItem = Item;
+}
+
+void UInv_GridSlot::SetItemPopUp(UInv_ItemPopUp* PopUp)
+{
+	ItemPopUp = PopUp;
+	ItemPopUp->SetGridIndex(GetTileIndex());
+	ItemPopUp->OnNativeDestruct.AddUObject(this, &UInv_GridSlot::OnItemPopUpDestruct);
+}
+
+void UInv_GridSlot::OnItemPopUpDestruct(UUserWidget* Menu)
+{
+	ItemPopUp.Reset();
 }
 
 void UInv_GridSlot::SetUnoccupiedTexture()
