@@ -78,6 +78,55 @@ void UInv_InventoryComponent::Server_AddStacksToItem_Implementation(UInv_ItemCom
 	
 }
 
+void UInv_InventoryComponent::Server_DropItem_Implementation(UInv_InventoryItem* InventoryItem, int32 StackCount)
+{
+	const int32 NewStackCount = InventoryItem->GetTotalStackCount() - StackCount;
+	if (NewStackCount <= 0)
+	{
+		InventoryList.RemoveEntry(InventoryItem);
+	}
+	else
+	{
+		InventoryItem->SetTotalStackCount(NewStackCount);
+	}
+	
+	SpawnDroppedItem(InventoryItem, StackCount);
+}
+
+void UInv_InventoryComponent::Server_ConsumeItem_Implementation(UInv_InventoryItem* InventoryItem)
+{
+	const int32 NewStackCount = InventoryItem->GetTotalStackCount() - 1;
+	if (NewStackCount <= 0)
+	{
+		InventoryList.RemoveEntry(InventoryItem);
+	}
+	else
+	{
+		InventoryItem->SetTotalStackCount(NewStackCount);
+	}
+	
+	if (FInv_ConsumableFragment* ConsumableFragment = InventoryItem->GetItemManifestMutable().GetFragmentOfTypeMutable<FInv_ConsumableFragment>())
+	{
+		ConsumableFragment->OnConsume(OwningController.Get());
+	}
+}
+
+void UInv_InventoryComponent::SpawnDroppedItem(UInv_InventoryItem* InventoryItem, int32 StackCount)
+{
+	const APawn* OwningPawn = OwningController->GetPawn();
+	FVector RotatedForward = OwningPawn->GetActorForwardVector();
+	RotatedForward = RotatedForward.RotateAngleAxis(FMath::FRandRange(DropSpawnAngleMin, DropSpawnAngleMax), FVector::UpVector);
+	FVector SpawnLocation = OwningPawn->GetActorLocation() + RotatedForward * FMath::FRandRange(DropSpawnDistanceMin, DropSpawnDistanceMax);
+	SpawnLocation.Z -= RelativeSpawnElevation;
+	const FRotator SpawnRotation = FRotator::ZeroRotator;
+	
+	FInv_ItemManifest& ItemManifest = InventoryItem->GetItemManifestMutable();
+	if (FInv_StackableFragment* StackableFragment = ItemManifest.GetFragmentOfTypeMutable<FInv_StackableFragment>())
+	{
+		StackableFragment->SetStackCount(StackCount);
+	}
+	ItemManifest.SpawnPickUpActor(this, SpawnLocation, SpawnRotation);
+}
 
 void UInv_InventoryComponent::ToggleInventoryMenu()
 {

@@ -33,6 +33,13 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_AddStacksToItem(UInv_ItemComponent* ItemComponent, int32 StackCount, int32 Remainder);
 	
+	UFUNCTION(Server, Reliable)
+	void Server_DropItem(UInv_InventoryItem* InventoryItem, int32 StackCount);
+	
+	UFUNCTION(Server, Reliable)
+	void Server_ConsumeItem(UInv_InventoryItem* InventoryItem);
+	
+	void SpawnDroppedItem(UInv_InventoryItem* InventoryItem, int32 StackCount);
 	void ToggleInventoryMenu();
 	void AddRepSubObj(UObject* SubObj);
 	
@@ -62,4 +69,19 @@ private:
 	bool bInventoryMenuOpen = false;
 	void OpenInventoryMenu();
 	void CloseInventoryMenu();
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	float DropSpawnAngleMin = -90.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	float DropSpawnAngleMax = 90.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	float DropSpawnDistanceMin = 50.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	float DropSpawnDistanceMax = 100.f;
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	float RelativeSpawnElevation = 70.f;
 };

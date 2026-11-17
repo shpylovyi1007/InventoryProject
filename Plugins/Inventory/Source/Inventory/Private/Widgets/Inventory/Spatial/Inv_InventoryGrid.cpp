@@ -540,7 +540,7 @@ void UInv_InventoryGrid::CreateItemPopUp(const int32 GridIndex)
 	CanvasSlot->SetPosition(MousePosition - ItemPopUpOffset);
 	CanvasSlot->SetSize(ItemPopUp->GetBoxSize());
 	
-	const int32 SliderMax = GridSlots[GridIndex]->GetStackCount();
+	const int32 SliderMax = GridSlots[GridIndex]->GetStackCount() - 1;
 	if (RightClickItem->IsStackable() && SliderMax > 0)
 	{
 		ItemPopUp->OnSplit.BindDynamic(this, &ThisClass::OnPopUpMenuSplit);
@@ -566,14 +566,58 @@ void UInv_InventoryGrid::CreateItemPopUp(const int32 GridIndex)
 
 void UInv_InventoryGrid::OnPopUpMenuSplit(const int32 SplitAmount, const int32 GridIndex)
 {
+	UInv_InventoryItem* RightClickedItem = GridSlots[GridIndex]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem) || !RightClickedItem->IsStackable()) return;
+	
+	const int32 UpperLeftIndex = GridSlots[GridIndex]->GetUpperLeftIndex();
+	UInv_GridSlot* UpperLeftGridSlot = GridSlots[UpperLeftIndex];
+	const int32 StackCount = UpperLeftGridSlot->GetStackCount();
+	const int32 NewStackCount = StackCount - SplitAmount;
+	UpperLeftGridSlot->SetStackCount(NewStackCount);
+	SlottedItems.FindChecked(UpperLeftIndex)->UpdateStackCount(NewStackCount);
+	
+	AssignHoverItemWithIndex(RightClickedItem, UpperLeftIndex, UpperLeftIndex);
+	HoverItem->UpdateStackCount(SplitAmount);
 }
 
 void UInv_InventoryGrid::OnPopUpMenuDropItem(const int32 GridIndex)
 {
+	UInv_InventoryItem* RightClickedItem = GridSlots[GridIndex]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem)) return;
+	
+	PickUp(RightClickedItem, GridIndex);
+	DropItem();
+}
+
+void UInv_InventoryGrid::DropItem()
+{
+	if (!IsValid(HoverItem)) return;
+	if (!IsValid(HoverItem->GetInventoryItem())) return;
+	
+	InventoryComponent->Server_DropItem(HoverItem->GetInventoryItem(), HoverItem->GetStackCount());
+	
+	ClearHoverItem();
+	ShowCursor();
 }
 
 void UInv_InventoryGrid::OnPopUpMenuConsume(const int32 GridIndex)
 {
+	UInv_InventoryItem* RightClickedItem = GridSlots[GridIndex]->GetInventoryItem().Get();
+	if (!IsValid(RightClickedItem)) return;
+	
+	const int32 UpperLeftIndex = GridSlots[GridIndex]->GetUpperLeftIndex();
+	UInv_GridSlot* UpperLeftGridSlot = GridSlots[UpperLeftIndex];
+	const int32 NewStackCount = UpperLeftGridSlot->GetStackCount() - 1;
+	
+	UpperLeftGridSlot->SetStackCount(NewStackCount);
+	SlottedItems.FindChecked(UpperLeftIndex)->UpdateStackCount(NewStackCount);
+	
+	InventoryComponent->Server_ConsumeItem(RightClickedItem);
+	
+	if (NewStackCount <= 0)
+	{
+		RemoveItemFromGrid(RightClickedItem, GridIndex);
+	}
 }
 
 void UInv_InventoryGrid::AddItem(UInv_InventoryItem* Item)
@@ -649,8 +693,6 @@ void UInv_InventoryGrid::UpdateGridSlots(UInv_InventoryItem* NewItem, const int3
 		GridSlot->SetOccupiedTexture();
 		GridSlot->SetIsAvailable(false);
 	});
-	
-	
 }
 
 bool UInv_InventoryGrid::IsIndexClaimed(const TSet<int32>& CheckedIndices, const int32 Index) const
@@ -718,7 +760,6 @@ void UInv_InventoryGrid::OnGridSlotClicked(int32 GridIndex, const FPointerEvent&
 	{
 		PutDownOnIndex(ItemDropIndex);
 	}
-	
 }
 
 void UInv_InventoryGrid::PutDownOnIndex(const int32 Index)
@@ -737,7 +778,6 @@ void UInv_InventoryGrid::ClearHoverItem()
 	HoverItem->SetPreviousGridIndex(INDEX_NONE);
 	HoverItem->UpdateStackCount(0);
 	HoverItem->SetImageBrush(FSlateNoResource());
-	
 	HoverItem->RemoveFromParent();
 	HoverItem = nullptr;
 	

@@ -34,10 +34,10 @@ public:
 	void ShowCursor();
 	void HideCursor();
 	void SetOwningCanvas(UCanvasPanel* OwningCanvas);
+	void DropItem();
 	
 	UFUNCTION()
 	void AddItem(UInv_InventoryItem* Item);
-	
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
