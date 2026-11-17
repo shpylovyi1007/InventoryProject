@@ -472,6 +472,8 @@ void UInv_InventoryGrid::AddStacks(const FInv_SlotAvailabilityResult& Result)
 
 void UInv_InventoryGrid::OnSlottedItemClicked(int32 GridIndex, const FPointerEvent& InMouseEvent)
 {
+	UInv_InventoryStatics::ItemUnhovered(GetOwningPlayer());
+	
 	check(GridSlots.IsValidIndex(GridIndex));
 
 	UInv_InventoryItem* ClickedInventoryItem = GridSlots[GridIndex]->GetInventoryItem().Get();
@@ -598,6 +600,11 @@ void UInv_InventoryGrid::DropItem()
 	
 	ClearHoverItem();
 	ShowCursor();
+}
+
+bool UInv_InventoryGrid::GridHasHoverItem() const
+{
+	return IsValid(HoverItem);
 }
 
 void UInv_InventoryGrid::OnPopUpMenuConsume(const int32 GridIndex)

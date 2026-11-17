@@ -16,6 +16,8 @@ class INVENTORY_API UInv_InventoryBase : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	
 	virtual FInv_SlotAvailabilityResult HasRoomForItem(UInv_ItemComponent* ItemComponent) const {return FInv_SlotAvailabilityResult();};
+	virtual void OnItemHovered(UInv_InventoryItem* InventoryItem) {}
+	virtual void OnItemUnhovered() {}
+	virtual bool HasHoverItem() const { return false; }
 };

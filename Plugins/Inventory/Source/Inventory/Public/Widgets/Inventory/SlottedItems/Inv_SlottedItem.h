@@ -19,8 +19,6 @@ class INVENTORY_API UInv_SlottedItem : public UUserWidget
 	GENERATED_BODY()
 	
 public:
-	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
-	
 	void SetIsStackable(bool bStackable) { bIsStackable = bStackable; }
 	void SetGridIndex(int32 Index)  { GridIndex = Index; }
 	void SetGridDimensions(const FIntPoint& Dimensions) { GridDimensions = Dimensions; }
@@ -36,6 +34,13 @@ public:
 	void UpdateStackCount(int32 StackCount);
 	
 	FSlottedItemClicked OnSlottedItemClicked;
+	
+protected:
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	virtual void NativeOnMouseLeave(const FPointerEvent& InMouseEvent) override;
+	
+	
 private:
 	
 	UPROPERTY(meta = (BindWidget))
