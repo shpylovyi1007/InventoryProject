@@ -2,7 +2,10 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "Serialization/ShaderKeyGenerator.h"
 #include "Inv_ItemFragment.generated.h"
+
+class UInv_CompositeBase;
 
 USTRUCT(BlueprintType)
 struct FInv_ItemFragment
@@ -23,6 +26,17 @@ private:
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (Categories="FragmentTags"))
 	FGameplayTag FragmentTag = FGameplayTag::EmptyTag;
+};
+
+USTRUCT(BlueprintType)
+struct FInv_InventoryItemFragment : public FInv_ItemFragment
+{
+	GENERATED_BODY()
+	
+	virtual void Assimilate(UInv_CompositeBase* Composite) const;
+	
+protected:
+	bool MatchesWidgetTag(const UInv_CompositeBase* Composite) const;
 };
 
 USTRUCT(BlueprintType)
@@ -47,11 +61,12 @@ private:
 
 
 USTRUCT(BlueprintType)
-struct FInv_ImageFragment : public FInv_ItemFragment
+struct FInv_ImageFragment : public FInv_InventoryItemFragment
 {
 	GENERATED_BODY()
 	
 	UTexture2D* GetIcon() const { return Icon; }
+	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
 	
 private:
 	
@@ -61,6 +76,45 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	FVector2D IconDimensions{44.f, 44.f};
 };
+
+USTRUCT(BlueprintType)
+struct FInv_TextFragment : public FInv_InventoryItemFragment
+{
+	GENERATED_BODY()
+	
+public:
+	FText GetText() const { return FragmentText; }
+	void SetText(const FText& Text) { FragmentText = Text; }
+	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
+	
+private:
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	FText FragmentText;
+};
+
+USTRUCT(BlueprintType)
+struct FInv_LabeledNumberFragment : public FInv_InventoryItemFragment
+{
+	GENERATED_BODY()
+public:
+	 
+	
+private:
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	FText Text_Label{};
+	
+	UPROPERTY(VisibleAnywhere, Category = "Inventory")
+	float Value{0.f};
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	float Min{0.f};
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	float Max{0.f};
+	 
+};
+
+
 
 USTRUCT(BlueprintType)
 struct FInv_StackableFragment : public FInv_ItemFragment
