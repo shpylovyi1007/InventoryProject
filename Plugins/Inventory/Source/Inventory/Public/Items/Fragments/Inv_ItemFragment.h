@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
-#include "Serialization/ShaderKeyGenerator.h"
+#include "StructUtils/InstancedStruct.h"
 #include "Inv_ItemFragment.generated.h"
 
 class UInv_CompositeBase;
@@ -21,6 +21,7 @@ struct FInv_ItemFragment
 	
 	FGameplayTag GetFragmentTag() const { return FragmentTag; }
 	void SetFragmentTag(FGameplayTag Tag) { FragmentTag = Tag; }
+	virtual void Manifest() {}
 	
 private:
 	
@@ -96,8 +97,12 @@ USTRUCT(BlueprintType)
 struct FInv_LabeledNumberFragment : public FInv_InventoryItemFragment
 {
 	GENERATED_BODY()
-public:
-	 
+	
+	virtual void Manifest() override;
+	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
+	
+	bool bRandomizeOnManifest{true};
+	float GetValue() const { return Value; }
 	
 private:
 	UPROPERTY(EditAnywhere, Category = "Inventory")
@@ -111,6 +116,18 @@ private:
 	
 	UPROPERTY(EditAnywhere, Category = "Inventory")
 	float Max{0.f};
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	bool bCollapseLabel{false};
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	bool bCollapseValue{false};
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	int32 MinFractionalDigits{1};
+	
+	UPROPERTY(EditAnywhere, Category = "Inventory")
+	int32 MaxFractionalDigits{1};
 	 
 };
 
@@ -135,32 +152,44 @@ private:
 	int32 StackCount{1};
 };
 
+
+// Consume Fragments
+
 USTRUCT(BlueprintType)
-struct FInv_ConsumableFragment : public FInv_ItemFragment
+struct FInv_ConsumeModifier : public FInv_LabeledNumberFragment
 {
 	GENERATED_BODY()
 	
 	virtual void OnConsume(APlayerController* PC) {}
 };
 
+
+
 USTRUCT(BlueprintType)
-struct FInv_HealthPotionFragment : public FInv_ConsumableFragment
+struct FInv_ConsumableFragment : public FInv_InventoryItemFragment
 {
 	GENERATED_BODY()
+	virtual void Assimilate(UInv_CompositeBase* Composite) const override;
+	virtual void OnConsume(APlayerController* PC);
+	virtual void Manifest() override;
 	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
-	float HealAmount = 20.f;
+private:
+	UPROPERTY(EditAnywhere, Category = "Inventory", meta = (ExcludeBaseStruct))
+	TArray<TInstancedStruct<FInv_ConsumeModifier>> ConsumeModifiers;
+};
+
+USTRUCT(BlueprintType)
+struct FInv_HealthPotionFragment : public FInv_ConsumeModifier
+{
+	GENERATED_BODY()
 	
 	virtual void OnConsume(APlayerController* PC) override;
 };
 
 USTRUCT(BlueprintType)
-struct FInv_ManaPotionFragment : public FInv_ConsumableFragment
+struct FInv_ManaPotionFragment : public FInv_ConsumeModifier
 {
 	GENERATED_BODY()
-	
-	UPROPERTY(EditAnywhere, Category = "Inventory")
-	float ManaAmount = 20.f;
 	
 	virtual void OnConsume(APlayerController* PC) override;
 };

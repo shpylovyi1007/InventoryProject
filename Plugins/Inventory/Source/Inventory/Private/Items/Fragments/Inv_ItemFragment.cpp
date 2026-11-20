@@ -2,6 +2,7 @@
 
 #include "Widgets/Composite/Inv_CompositeBase.h"
 #include "Widgets/Composite/Inv_Leaf_Image.h"
+#include "Widgets/Composite/Inv_Leaf_LabeledValue.h"
 #include "Widgets/Composite/Inv_Leaf_Text.h"
 
 
@@ -37,12 +38,67 @@ void FInv_TextFragment::Assimilate(UInv_CompositeBase* Composite) const
 	LeafText->SetText(FragmentText);
 }
 
+void FInv_LabeledNumberFragment::Manifest()
+{
+	FInv_InventoryItemFragment::Manifest();
+	if (bRandomizeOnManifest)
+	{
+		Value = FMath::FRandRange(Min, Max);
+	}
+	bRandomizeOnManifest = false;
+}
+
+void FInv_LabeledNumberFragment::Assimilate(UInv_CompositeBase* Composite) const
+{
+	FInv_InventoryItemFragment::Assimilate(Composite);
+	
+	UInv_Leaf_LabeledValue* LeafLabeledValue = Cast<UInv_Leaf_LabeledValue>(Composite);
+	if (!IsValid(LeafLabeledValue)) return;
+	
+	FNumberFormattingOptions Options;
+	Options.MinimumFractionalDigits = MinFractionalDigits;
+	Options.MaximumFractionalDigits = MaxFractionalDigits;
+	
+	LeafLabeledValue->SetText_Label(Text_Label, bCollapseLabel);
+	LeafLabeledValue->SetText_Value(FText::AsNumber(Value, &Options), bCollapseValue);
+}
+
+void FInv_ConsumableFragment::Assimilate(UInv_CompositeBase* Composite) const
+{
+	FInv_InventoryItemFragment::Assimilate(Composite);
+	for (const auto& Modifier : ConsumeModifiers)
+	{
+		const auto& ModRef = Modifier.Get();
+		ModRef.Assimilate(Composite);
+	}
+}
+
+void FInv_ConsumableFragment::OnConsume(APlayerController* PC)
+{
+	for (auto& Modifier : ConsumeModifiers)
+	{
+		auto& ModRef = Modifier.GetMutable();
+		ModRef.OnConsume(PC);
+	}
+}
+
+void FInv_ConsumableFragment::Manifest()
+{
+	FInv_InventoryItemFragment::Manifest();
+	for (auto& Modifier : ConsumeModifiers)
+	{
+		auto& ModRef = Modifier.GetMutable();
+		ModRef.Manifest();
+	}
+}
+
 void FInv_HealthPotionFragment::OnConsume(APlayerController* PC)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Healing by %f"), HealAmount));
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, FString::Printf(TEXT("Healing by %f"), GetValue()));
 }
 
 void FInv_ManaPotionFragment::OnConsume(APlayerController* PC)
 {
-	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("Mana replenished by %f"), ManaAmount));
+	GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue, FString::Printf(TEXT("Mana replenished by %f"), GetValue()));
 }
+
